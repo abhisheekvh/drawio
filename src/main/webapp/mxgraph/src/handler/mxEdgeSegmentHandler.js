@@ -205,7 +205,88 @@ mxEdgeSegmentHandler.prototype.updatePreviewState = function(edge, point, termin
 		edge.view.updateFixedTerminalPoints(edge, source, target);
 		edge.view.updatePoints(edge, this.points, source, target);
 		edge.view.updateFloatingTerminalPoints(edge, source, target);
+
+		var geo = this.graph.getCellGeometry(this.state.cell);
+
+		if (geo != null && this.isSameRoute(edge))
+		{
+			this.points = (geo.points != null) ? geo.points.slice() : null;
+		}
 	}
+};
+
+/**
+ * Function: isSameRoute
+ *
+ * Returns true if the preview route matches the original route, ignoring
+ * duplicate and collinear points.
+ */
+mxEdgeSegmentHandler.prototype.isSameRoute = function(edge)
+{
+	var normalize = function(points)
+	{
+		var result = [];
+
+		if (points == null)
+		{
+			return null;
+		}
+
+		for (var i = 0; i < points.length; i++)
+		{
+			var pt = points[i];
+
+			if (pt == null)
+			{
+				return null;
+			}
+
+			if (result.length > 0 &&
+				Math.round(result[result.length - 1].x - pt.x) == 0 &&
+				Math.round(result[result.length - 1].y - pt.y) == 0)
+			{
+				continue;
+			}
+
+			while (result.length > 1)
+			{
+				var prev = result[result.length - 2];
+				var last = result[result.length - 1];
+
+				if ((Math.round(prev.x - last.x) == 0 && Math.round(last.x - pt.x) == 0) ||
+					(Math.round(prev.y - last.y) == 0 && Math.round(last.y - pt.y) == 0))
+				{
+					result.pop();
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			result.push(pt);
+		}
+
+		return result;
+	};
+
+	var original = normalize(this.state.absolutePoints);
+	var current = normalize(edge.absolutePoints);
+
+	if (original == null || current == null || original.length != current.length)
+	{
+		return false;
+	}
+
+	for (var i = 0; i < original.length; i++)
+	{
+		if (original[i].x != current[i].x || original[i].y != current[i].y)
+		{
+			return false;
+		}
+	}
+
+	return true;
 };
 
 /**
